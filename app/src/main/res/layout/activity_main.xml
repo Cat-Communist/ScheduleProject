@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:background="#FFFFFF">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Демо-панель Старосты/Студента"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="10dp"/>
+
+    <Spinner
+        android:id="@+id/spinnerRole"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:layout_marginBottom="16dp"/>
+
+    <Button
+        android:id="@+id/btnReport"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="1. Получить отчет по мероприятию"
+        android:layout_marginBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btnMark"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="2. Отметить посещаемость (Староста)"
+        android:layout_marginBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btnRegister"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="3. Записаться на мероприятие (Студент)"
+        android:layout_marginBottom="8dp"/>
+
+    <Button
+        android:id="@+id/btnDoc"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="4. Сформировать разрешение (за 1 день)"
+        android:layout_marginBottom="16dp"/>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#F5F5F5"
+        android:padding="10dp">
+
+        <TextView
+            android:id="@+id/tvResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Здесь появится результат операции..."
+            android:textSize="14sp"/>
+    </ScrollView>
+
+</LinearLayout>
