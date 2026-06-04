@@ -8,9 +8,13 @@ import java.util.Map;
 
 public interface ApiService {
 
+    @POST("login")
+    Call<ResponseBody> login(@Body Map<String, String> credentials);
+
     @GET("events")
     Call<List<Map<String, Object>>> getEvents();
 
+    // ✅ ЯВНО УКАЗЫВАЕМ POST
     @POST("register")
     Call<ResponseBody> register(@Query("studentId") Integer studentId,
                                 @Query("activityId") Integer activityId,
@@ -27,7 +31,4 @@ public interface ApiService {
 
     @GET("report/{activityId}")
     Call<List<Map<String, Object>>> getReport(@Path("activityId") Integer activityId);
-
-    @POST("login")
-    Call<ResponseBody> login(@Body Map<String, String> credentials);
 }

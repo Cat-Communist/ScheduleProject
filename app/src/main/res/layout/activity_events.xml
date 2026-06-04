@@ -5,16 +5,38 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <TextView
+    <!-- Верхняя панель с кнопкой выхода -->
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Лента мероприятий"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="16dp">
 
+        <TextView
+            android:id="@+id/tvWelcome"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Лента мероприятий"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <!-- ✅ КНОПКА ВЫХОДА -->
+        <Button
+            android:id="@+id/btnLogout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:text="Выйти"
+            android:textSize="12sp"
+            android:backgroundTint="#F44336" /> <!-- Красный цвет для акцента -->
+
+    </RelativeLayout>
+
+    <!-- Список мероприятий -->
     <ListView
         android:id="@+id/lvEvents"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
 </LinearLayout>

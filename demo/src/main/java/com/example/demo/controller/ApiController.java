@@ -64,15 +64,30 @@ public class ApiController {
     public ResponseEntity<String> register(
             @RequestParam Integer studentId,
             @RequestParam Integer activityId,
-            @RequestParam Integer unitId) {
+            @RequestParam(required = false) Integer unitId) {
 
-        // ✅ ДОБАВЬТЕ ЛОГИРОВАНИЕ
         System.out.println("=== ЗАПРОС НА ЗАПИСЬ ===");
         System.out.println("studentId: " + studentId);
         System.out.println("activityId: " + activityId);
-        System.out.println("unitId: " + unitId);
+        System.out.println("unitId (из клиента): " + unitId);
 
         try {
+            // ✅ АВТОМАТИЧЕСКИ получаем unit_id из БД, если не передан
+            if (unitId == null) {
+                String sql = "SELECT unit_id FROM group_activities WHERE id = ?";
+                try (Connection conn = dataSource.getConnection();
+                     PreparedStatement ps = conn.prepareStatement(sql)) {
+                    ps.setInt(1, activityId);
+                    ResultSet rs = ps.executeQuery();
+                    if (rs.next()) {
+                        unitId = rs.getInt("unit_id");
+                        System.out.println("Автоматически определен unitId: " + unitId);
+                    } else {
+                        return ResponseEntity.status(404).body("Мероприятие не найдено");
+                    }
+                }
+            }
+
             String result = eventService.registerForEvent(studentId, activityId, unitId);
             return ResponseEntity.ok(result);
         } catch (Exception e) {

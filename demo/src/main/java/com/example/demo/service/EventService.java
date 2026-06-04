@@ -17,7 +17,7 @@ public class EventService {
     // 1. ПОЛУЧИТЬ ВСЕ МЕРОПРИЯТИЯ
     public List<Map<String, Object>> getAllEvents() throws Exception {
         List<Map<String, Object>> events = new ArrayList<>();
-        String sql = "SELECT id, title, start_date, finish_date FROM group_activities ORDER BY start_date DESC";
+        String sql = "SELECT id, title, start_date, finish_date, unit_id FROM group_activities ORDER BY start_date DESC";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql);
@@ -29,75 +29,82 @@ public class EventService {
                 event.put("title", rs.getString("title"));
                 event.put("date", rs.getString("start_date"));
                 event.put("description", "До: " + rs.getString("finish_date"));
+                event.put("unit_id", rs.getInt("unit_id"));
                 events.add(event);
             }
         }
         return events;
     }
 
-    // 2. ЗАПИСЬ НА МЕРОПРИЯТИЕ (проверка по таблице attendance)
+    // 2. ЗАПИСЬ НА МЕРОПРИЯТИЕ (проверка пропусков через таблицу-связку)
     public String registerForEvent(Integer studentId, Integer activityId, Integer unitId) throws Exception {
         System.out.println("=== ПРОВЕРКА ПРОПУСКОВ ===");
         System.out.println("studentId: " + studentId);
-        System.out.println("unitId (discipline_id): " + unitId);
+        System.out.println("activityId: " + activityId);
+        System.out.println("unitId: " + unitId);
 
-        String checkSql = "SELECT COUNT(*) as skip_count FROM attendance " +
-                "WHERE student_id = ? AND discipline_id = ? AND attend = false";
+        // Получаем все discipline_id для этого unit_id
+        String getDisciplinesSql = "SELECT discipline_id FROM unit_disciplines WHERE unit_id = ?";
+        List<Integer> disciplineIds = new ArrayList<>();
 
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(checkSql)) {
-            ps.setInt(1, studentId);
-            ps.setInt(2, unitId);
+             PreparedStatement ps = conn.prepareStatement(getDisciplinesSql)) {
+            ps.setInt(1, unitId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                disciplineIds.add(rs.getInt("discipline_id"));
+            }
+        }
 
-            System.out.println("SQL: " + checkSql);
-            System.out.println("Параметры: studentId=" + studentId + ", discipline_id=" + unitId);
+        System.out.println("Дисциплины подразделения " + unitId + ": " + disciplineIds);
+
+        if (disciplineIds.isEmpty()) {
+            return "Студент допущен (нет связанных дисциплин).";
+        }
+
+        // ✅ ИСПРАВЛЕНИЕ: Объявляем переменную ДО блока try-catch
+        int skipCount = 0;
+
+        // Считаем пропуски по ВСЕМ дисциплинам этого подразделения
+        StringBuilder checkSql = new StringBuilder(
+                "SELECT COUNT(*) as skip_count FROM attendance " +
+                        "WHERE student_id = ? AND discipline_id IN ("
+        );
+
+        for (int i = 0; i < disciplineIds.size(); i++) {
+            if (i > 0) checkSql.append(", ");
+            checkSql.append("?");
+        }
+        checkSql.append(") AND attend = false");
+
+        System.out.println("SQL: " + checkSql.toString());
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(checkSql.toString())) {
+            ps.setInt(1, studentId);
+            for (int i = 0; i < disciplineIds.size(); i++) {
+                ps.setInt(i + 2, disciplineIds.get(i));
+            }
 
             ResultSet rs = ps.executeQuery();
             rs.next();
-            int skipCount = rs.getInt("skip_count");
+            skipCount = rs.getInt("skip_count"); // Присваиваем внешней переменной
 
             System.out.println("Найдено пропусков: " + skipCount);
 
             if (skipCount >= 3) {
                 throw new Exception("АВТОЗАПРЕТ: У студента " + skipCount +
-                        " пропусков по дисциплине (норма: не более 2). Запись запрещена.");
+                        " пропусков по дисциплинам этого подразделения (норма: не более 2).");
             }
         }
 
-        return "Студент допущен к участию (пропусков по дисциплине: " +
-                getSkipCountFromAttendance(studentId, unitId) + " из 3 допустимых).";
-    }
-
-    // Считает пропуски по дисциплине из таблицы attendance
-    private int getSkipCountFromAttendance(Integer studentId, Integer unitId) throws Exception {
-        String sql = "SELECT COUNT(*) FROM attendance " +
-                "WHERE student_id = ? AND discipline_id = ? AND attend = false";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, studentId);
-            ps.setInt(2, unitId);
-            ResultSet rs = ps.executeQuery();
-            rs.next();
-            return rs.getInt(1);
-        }
-    }
-
-    // Вспомогательный метод для подсчёта пропусков
-    private int getSkipCount(Integer studentId) throws Exception {
-        String sql = "SELECT COUNT(*) FROM gr_act_stats WHERE student_id = ? AND status = false";
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, studentId);
-            ResultSet rs = ps.executeQuery();
-            rs.next();
-            return rs.getInt(1);
-        }
+        // Теперь skipCount виден здесь
+        return "Студент допущен (пропусков: " + skipCount + " из 3).";
     }
 
     // 3. СТУДЕНТЫ НА МЕРОПРИЯТИИ (Через группы!)
     public List<Map<String, Object>> getEventStudents(Integer activityId) throws Exception {
         List<Map<String, Object>> students = new ArrayList<>();
-        // Цепочка: Мероприятие -> Группы на мероприятии -> Студенты в этих группах
         String sql = "SELECT DISTINCT s.id, s.fullname " +
                 "FROM students s " +
                 "JOIN groups g ON s.group_id = g.id " +
@@ -122,12 +129,10 @@ public class EventService {
     public void markAttendance(Integer starostaId, Integer studentId,
                                Integer activityId, String date, boolean isPresent) throws Exception {
 
-        // activityId теперь передаётся напрямую, поиск не нужен!
         if (activityId == null) {
             throw new Exception("Не указан ID мероприятия");
         }
 
-        // Проверяем, что мероприятие существует
         String checkSql = "SELECT id FROM group_activities WHERE id = ?";
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(checkSql)) {
@@ -138,7 +143,6 @@ public class EventService {
             }
         }
 
-        // Вставляем или обновляем отметку
         String sql = "INSERT INTO gr_act_stats (student_id, act_id, status) " +
                 "VALUES (?, ?, ?) " +
                 "ON CONFLICT (student_id, act_id) DO UPDATE SET status = EXCLUDED.status";
@@ -152,11 +156,12 @@ public class EventService {
         }
     }
 
-    // 5. ФОРМИРОВАНИЕ РАЗРЕШЕНИЯ
+    // 5. ФОРМИРОВАНИЕ РАЗРЕШЕНИЯ (с проверкой через таблицу-связку)
     public String generatePermissionDocument(Integer activityId) throws Exception {
-        String eventSql = "SELECT title, start_date FROM group_activities WHERE id = ?";
+        String eventSql = "SELECT title, start_date, unit_id FROM group_activities WHERE id = ?";
         String title = null;
         String eventDateStr = null;
+        Integer unitId = null;
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(eventSql)) {
@@ -165,24 +170,57 @@ public class EventService {
             if (rs.next()) {
                 title = rs.getString("title");
                 eventDateStr = rs.getString("start_date");
+                unitId = rs.getInt("unit_id");
             }
         }
 
         if (title == null) throw new Exception("Мероприятие не найдено");
 
-        // Список студентов через группы
-        String studentsSql = "SELECT DISTINCT s.fullname " +
+        // Получаем все discipline_id для этого unit_id
+        String getDisciplinesSql = "SELECT discipline_id FROM unit_disciplines WHERE unit_id = ?";
+        List<Integer> disciplineIds = new ArrayList<>();
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(getDisciplinesSql)) {
+            ps.setInt(1, unitId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                disciplineIds.add(rs.getInt("discipline_id"));
+            }
+        }
+
+        System.out.println("=== ФОРМИРОВАНИЕ РАЗРЕШЕНИЯ ===");
+        System.out.println("unitId: " + unitId);
+        System.out.println("disciplineIds: " + disciplineIds);
+
+        String studentsSql = "SELECT DISTINCT s.id, s.fullname " +
                 "FROM students s " +
                 "JOIN groups g ON s.group_id = g.id " +
                 "JOIN group_and_activities gaa ON g.id = gaa.group_id " +
                 "WHERE gaa.activity_id = ?";
 
-        List<String> students = new ArrayList<>();
+        List<String> allowedStudents = new ArrayList<>();
+        List<String> blockedStudents = new ArrayList<>();
+
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(studentsSql)) {
             ps.setInt(1, activityId);
             ResultSet rs = ps.executeQuery();
-            while (rs.next()) students.add(rs.getString("fullname"));
+
+            while (rs.next()) {
+                int studentId = rs.getInt("id");
+                String fullname = rs.getString("fullname");
+
+                int skipCount = getSkipCountByDisciplines(studentId, disciplineIds);
+
+                System.out.println("Студент: " + fullname + ", пропусков: " + skipCount);
+
+                if (skipCount < 3) {
+                    allowedStudents.add(fullname);
+                } else {
+                    blockedStudents.add(fullname + " (" + skipCount + " пропусков)");
+                }
+            }
         }
 
         String today = new SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date());
@@ -190,22 +228,78 @@ public class EventService {
         doc.append("РАЗРЕШЕНИЕ НА ПОСЕЩЕНИЕ МЕРОПРИЯТИЯ\n");
         doc.append("=====================================\n\n");
         doc.append("Мероприятие: ").append(title).append("\n");
-        doc.append("Дата начала: ").append(eventDateStr).append("\n\n");
-        doc.append("СПИСОК ДОПУЩЕННЫХ (по группам):\n");
+        doc.append("Дата начала: ").append(eventDateStr).append("\n");
+        doc.append("Подразделение: ").append(getUnitName(unitId)).append("\n\n");
+        doc.append("СПИСОК ДОПУЩЕННЫХ:\n");
         doc.append("-----------------\n");
-        for (int i = 0; i < students.size(); i++) {
-            doc.append((i + 1)).append(". ").append(students.get(i)).append("\n");
+
+        if (allowedStudents.isEmpty()) {
+            doc.append("Нет допущенных студентов (у всех >= 3 пропусков)\n");
+        } else {
+            for (int i = 0; i < allowedStudents.size(); i++) {
+                doc.append((i + 1)).append(". ").append(allowedStudents.get(i)).append("\n");
+            }
         }
-        doc.append("\nВсего допущено: ").append(students.size()).append(" чел.\n");
-        doc.append("Дата формирования: ").append(today).append("\n");
+
+        doc.append("\nВсего допущено: ").append(allowedStudents.size()).append(" чел.\n");
+
+        if (!blockedStudents.isEmpty()) {
+            doc.append("\nНЕ ДОПУЩЕНЫ (>= 3 пропусков):\n");
+            doc.append("-----------------\n");
+            for (String blocked : blockedStudents) {
+                doc.append("• ").append(blocked).append("\n");
+            }
+        }
+
+        doc.append("\nДата формирования: ").append(today).append("\n");
 
         return doc.toString();
+    }
+
+    // Считает пропуски по списку дисциплин
+    private int getSkipCountByDisciplines(Integer studentId, List<Integer> disciplineIds) throws Exception {
+        if (disciplineIds.isEmpty()) {
+            return 0;
+        }
+
+        StringBuilder sql = new StringBuilder(
+                "SELECT COUNT(*) FROM attendance " +
+                        "WHERE student_id = ? AND discipline_id IN ("
+        );
+
+        for (int i = 0; i < disciplineIds.size(); i++) {
+            if (i > 0) sql.append(", ");
+            sql.append("?");
+        }
+        sql.append(") AND attend = false");
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
+            ps.setInt(1, studentId);
+            for (int i = 0; i < disciplineIds.size(); i++) {
+                ps.setInt(i + 2, disciplineIds.get(i));
+            }
+            ResultSet rs = ps.executeQuery();
+            rs.next();
+            return rs.getInt(1);
+        }
+    }
+
+    // Вспомогательный метод для получения названия подразделения
+    private String getUnitName(Integer unitId) throws Exception {
+        String sql = "SELECT title FROM unit WHERE id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, unitId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return rs.getString("title");
+            return "неизвестно";
+        }
     }
 
     // 6. ОТЧЁТ
     public List<Map<String, Object>> getReport(Integer activityId) throws Exception {
         List<Map<String, Object>> report = new ArrayList<>();
-        // Отчет по студентам, которые должны быть на мероприятии (через группы)
         String sql = "SELECT DISTINCT s.fullname, gas.status " +
                 "FROM students s " +
                 "JOIN groups g ON s.group_id = g.id " +
@@ -220,7 +314,6 @@ public class EventService {
             while (rs.next()) {
                 Map<String, Object> row = new HashMap<>();
                 row.put("fullname", rs.getString("fullname"));
-                // Обратите внимание: поле теперь называется status
                 row.put("attended", rs.getObject("status") != null ? rs.getBoolean("status") : null);
                 report.add(row);
             }

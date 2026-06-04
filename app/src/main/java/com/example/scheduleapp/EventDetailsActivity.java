@@ -34,6 +34,7 @@ public class EventDetailsActivity extends AppCompatActivity {
     private int eventId;
     private String eventTitle;
     private String eventDate;
+    private int unitId;
 
     private LinearLayout llActions;
     private TextView tvResult;
@@ -62,6 +63,10 @@ public class EventDetailsActivity extends AppCompatActivity {
         eventTitle = getIntent().getStringExtra("eventTitle");
         eventDate = getIntent().getStringExtra("eventDate");
 
+        unitId = getIntent().getIntExtra("unitId", 0);
+
+        System.out.println("DEBUG: Received unitId = " + unitId);
+
         ((TextView) findViewById(R.id.tvEventTitleHeader)).setText(eventTitle);
         ((TextView) findViewById(R.id.tvEventDateHeader)).setText("Дата: " + eventDate);
 
@@ -84,7 +89,7 @@ public class EventDetailsActivity extends AppCompatActivity {
 
     private void registerForEvent() {
         tvResult.setText("Запись на мероприятие...");
-        RetrofitClient.getService().register(currentUserId, eventId, 1)
+        RetrofitClient.getService().register(currentUserId, eventId, unitId)
                 .enqueue(new Callback<ResponseBody>() {
                     @Override
                     public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {

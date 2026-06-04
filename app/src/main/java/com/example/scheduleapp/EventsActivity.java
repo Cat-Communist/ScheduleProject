@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -23,7 +24,9 @@ import retrofit2.Response;
 public class EventsActivity extends AppCompatActivity {
 
     private ListView lvEvents;
+    private Button btnLogout;
     private List<Map<String, Object>> eventsList;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,7 +34,26 @@ public class EventsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_events);
 
         lvEvents = findViewById(R.id.lvEvents);
+        btnLogout = findViewById(R.id.btnLogout);
+
         loadEvents();
+        btnLogout.setOnClickListener(v->logout());
+    }
+
+    private void logout() {
+        // 1. Очищаем данные текущего пользователя
+        LoginActivity.CURRENT_USER_ID = -1;
+        LoginActivity.CURRENT_USER_ROLE = "";
+        LoginActivity.CURRENT_USER_NAME = "";
+
+        // 2. Переходим на экран входа
+        Intent intent = new Intent(EventsActivity.this, LoginActivity.class);
+
+        // 3. Очищаем стек активностей, чтобы нельзя было вернуться назад кнопкой "Назад"
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+        startActivity(intent);
+        finish(); // Закрываем текущую активность
     }
 
     private void loadEvents() {
@@ -76,6 +98,14 @@ public class EventsActivity extends AppCompatActivity {
                 intent.putExtra("eventId", ((Number) event.get("id")).intValue());
                 intent.putExtra("eventTitle", event.get("title").toString());
                 intent.putExtra("eventDate", event.get("date").toString());
+
+                Object unitObj = event.get("unit_id");
+                if (unitObj != null) {
+                    intent.putExtra("unitId", ((Number) unitObj).intValue());
+                } else {
+                    intent.putExtra("unitId", 0); // Запасной вариант
+                }
+
                 startActivity(intent);
             });
             return convertView;
