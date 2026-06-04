@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <Button
+        android:id="@+id/btnBack"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="&lt; Назад" />
+
+    <TextView
+        android:id="@+id/tvEventTitleHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/tvEventDateHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="16sp"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Панель действий: ВСЕ кнопки должны быть ВНУТРИ этого LinearLayout -->
+    <LinearLayout
+        android:id="@+id/llActions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <Button
+            android:id="@+id/btnRegister"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Записаться на мероприятие"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnMark"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Отметить посещаемость (Староста)"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btnDoc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Сформировать разрешение"
+            android:layout_marginBottom="8dp" />
+
+        <!-- НОВАЯ КНОПКА: Отчёт по посещаемости -->
+        <Button
+            android:id="@+id/btnReport"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Сформировать отчёт о посещаемости"
+            android:layout_marginBottom="16dp"
+            android:backgroundTint="#4CAF50" />
+
+    </LinearLayout>
+    <!-- Закрывающий тег llActions был здесь, но новые кнопки были ПОСЛЕ него -->
+
+    <ListView
+        android:id="@+id/lvStudents"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone" />
+
+    <Button
+        android:id="@+id/btnSaveAttendance"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Сохранить результат"
+        android:visibility="gone"
+        android:layout_marginTop="8dp" />
+
+    <!-- УДАЛИТЕ ЭТОТ БЛОК! Это был дубликат btnDoc -->
+    <!--
+    <Button
+        android:id="@+id/btnDoc"
+        ...
+    />
+    -->
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="16dp"
+        android:background="#F5F5F5"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/tvResult"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Здесь появится результат операции..."
+            android:textSize="14sp" />
+    </ScrollView>
+</LinearLayout>
