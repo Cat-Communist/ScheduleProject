@@ -62,7 +62,6 @@ public class EventService {
             return "Студент допущен (нет связанных дисциплин).";
         }
 
-        // ✅ ИСПРАВЛЕНИЕ: Объявляем переменную ДО блока try-catch
         int skipCount = 0;
 
         // Считаем пропуски по ВСЕМ дисциплинам этого подразделения
@@ -98,7 +97,6 @@ public class EventService {
             }
         }
 
-        // Теперь skipCount виден здесь
         return "Студент допущен (пропусков: " + skipCount + " из 3).";
     }
 
@@ -176,7 +174,6 @@ public class EventService {
 
         if (title == null) throw new Exception("Мероприятие не найдено");
 
-        // Получаем все discipline_id для этого unit_id
         String getDisciplinesSql = "SELECT discipline_id FROM unit_disciplines WHERE unit_id = ?";
         List<Integer> disciplineIds = new ArrayList<>();
 

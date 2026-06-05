@@ -19,7 +19,6 @@
             android:textSize="24sp"
             android:textStyle="bold" />
 
-        <!-- ✅ КНОПКА ВЫХОДА -->
         <Button
             android:id="@+id/btnLogout"
             android:layout_width="wrap_content"

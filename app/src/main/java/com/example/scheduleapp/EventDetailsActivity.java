@@ -43,8 +43,8 @@ public class EventDetailsActivity extends AppCompatActivity {
 
     private List<Map<String, Object>> studentsList;
     private Map<Integer, Boolean> attendanceMap = new HashMap<>();
-    private int currentUserId; // ✅ Без инициализации
-    private String currentRole; // ✅ Без инициализации
+    private int currentUserId;
+    private String currentRole;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,7 +80,6 @@ public class EventDetailsActivity extends AppCompatActivity {
         findViewById(R.id.btnMark).setOnClickListener(v -> showAttendanceForm());
         findViewById(R.id.btnDoc).setOnClickListener(v -> generateDocument());
 
-        // ✅ НОВАЯ КНОПКА: Отчёт по посещаемости
         findViewById(R.id.btnReport).setOnClickListener(v -> generateReport());
 
         btnSaveAttendance.setOnClickListener(v -> saveAttendance());
@@ -190,7 +189,6 @@ public class EventDetailsActivity extends AppCompatActivity {
                 });
     }
 
-    // ✅ НОВЫЙ МЕТОД: Формирование отчёта о посещаемости
     private void generateReport() {
         tvResult.setText("Формирование отчёта...");
 

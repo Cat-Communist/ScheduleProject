@@ -72,7 +72,6 @@ public class ApiController {
         System.out.println("unitId (из клиента): " + unitId);
 
         try {
-            // ✅ АВТОМАТИЧЕСКИ получаем unit_id из БД, если не передан
             if (unitId == null) {
                 String sql = "SELECT unit_id FROM group_activities WHERE id = ?";
                 try (Connection conn = dataSource.getConnection();
@@ -112,7 +111,6 @@ public class ApiController {
                 String date = (String) item.get("date");
                 boolean isPresent = (boolean) item.get("isPresent");
 
-                // Передаём activityId напрямую, а не unitId
                 eventService.markAttendance(1, studentId, activityId, date, isPresent);
             }
             return ResponseEntity.ok("Сохранено для " + items.size() + " студентов");

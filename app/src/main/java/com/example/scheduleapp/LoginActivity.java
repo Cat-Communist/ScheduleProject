@@ -69,7 +69,6 @@ public class LoginActivity extends AppCompatActivity {
                     if (response.isSuccessful() && response.body() != null) {
                         // Успешный вход - сервер вернул данные пользователя
                         String userData = response.body().string();
-                        // Парсим данные (в реальном проекте используйте Gson)
                         parseAndLogin(userData);
                     } else {
                         String error = response.errorBody() != null ?
@@ -89,7 +88,6 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void parseAndLogin(String userData) {
-        // Упрощённый парсинг (в реальности используйте JSON)
         // Формат от сервера: "id|fullname|role"
         try {
             String[] parts = userData.split("\\|");

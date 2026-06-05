@@ -14,7 +14,6 @@ public interface ApiService {
     @GET("events")
     Call<List<Map<String, Object>>> getEvents();
 
-    // ✅ ЯВНО УКАЗЫВАЕМ POST
     @POST("register")
     Call<ResponseBody> register(@Query("studentId") Integer studentId,
                                 @Query("activityId") Integer activityId,
