@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -27,7 +28,6 @@ public class EventsActivity extends AppCompatActivity {
     private Button btnLogout;
     private List<Map<String, Object>> eventsList;
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -37,23 +37,18 @@ public class EventsActivity extends AppCompatActivity {
         btnLogout = findViewById(R.id.btnLogout);
 
         loadEvents();
-        btnLogout.setOnClickListener(v->logout());
+        btnLogout.setOnClickListener(v -> logout());
     }
 
     private void logout() {
-        // 1. Очищаем данные текущего пользователя
         LoginActivity.CURRENT_USER_ID = -1;
         LoginActivity.CURRENT_USER_ROLE = "";
         LoginActivity.CURRENT_USER_NAME = "";
 
-        // 2. Переходим на экран входа
         Intent intent = new Intent(EventsActivity.this, LoginActivity.class);
-
-        // 3. Очищаем стек активностей, чтобы нельзя было вернуться назад кнопкой "Назад"
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-
         startActivity(intent);
-        finish(); // Закрываем текущую активность
+        finish();
     }
 
     private void loadEvents() {
@@ -88,26 +83,52 @@ public class EventsActivity extends AppCompatActivity {
             }
 
             Map<String, Object> event = eventsList.get(position);
-            ((TextView) convertView.findViewById(R.id.tvEventTitle)).setText(event.get("title").toString());
-            ((TextView) convertView.findViewById(R.id.tvEventDate)).setText("Дата: " + event.get("date"));
-            ((TextView) convertView.findViewById(R.id.tvEventDescription))
-                    .setText(event.get("description") != null ? event.get("description").toString() : "");
+
+            ImageView iconView = convertView.findViewById(R.id.ivEventIcon);
+            TextView tvTitle = convertView.findViewById(R.id.tvEventTitle);
+            TextView tvDate = convertView.findViewById(R.id.tvEventDate);
+            TextView tvDesc = convertView.findViewById(R.id.tvEventDescription);
+
+            tvTitle.setText(event.get("title").toString());
+            tvDate.setText("Дата: " + event.get("date"));
+            tvDesc.setText(event.get("description") != null ? event.get("description").toString() : "");
+
+            // Получаем unitId из данных мероприятия
+            Object unitObj = event.get("unit_id");
+            int unitId = 0;
+            if (unitObj != null) {
+                unitId = ((Number) unitObj).intValue();
+            }
+
+            // Устанавливаем иконку
+            switch (unitId) {
+                case 1: iconView.setImageResource(R.drawable.ic_it); break;
+                case 2: iconView.setImageResource(R.drawable.ic_sport); break;
+                case 3: iconView.setImageResource(R.drawable.ic_history); break;
+                default: iconView.setImageResource(R.drawable.ic_default); break;
+            }
+
+            final int finalUnitId = unitId;
 
             convertView.setOnClickListener(v -> {
                 Intent intent = new Intent(EventsActivity.this, EventDetailsActivity.class);
                 intent.putExtra("eventId", ((Number) event.get("id")).intValue());
                 intent.putExtra("eventTitle", event.get("title").toString());
                 intent.putExtra("eventDate", event.get("date").toString());
+                intent.putExtra("unitId", finalUnitId);
 
-                Object unitObj = event.get("unit_id");
-                if (unitObj != null) {
-                    intent.putExtra("unitId", ((Number) unitObj).intValue());
-                } else {
-                    intent.putExtra("unitId", 0); // Запасной вариант
+                int iconResId;
+                switch (finalUnitId) {
+                    case 1: iconResId = R.drawable.ic_it; break;
+                    case 2: iconResId = R.drawable.ic_sport; break;
+                    case 3: iconResId = R.drawable.ic_history; break;
+                    default: iconResId = R.drawable.ic_default; break;
                 }
+                intent.putExtra("iconResId", iconResId);
 
                 startActivity(intent);
             });
+
             return convertView;
         }
     }

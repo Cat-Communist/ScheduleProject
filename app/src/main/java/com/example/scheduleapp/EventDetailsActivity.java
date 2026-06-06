@@ -1,16 +1,21 @@
 package com.example.scheduleapp;
 
+import android.app.AlertDialog;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 
 import com.example.scheduleapp.network.AttendanceItem;
 import com.example.scheduleapp.network.RetrofitClient;
@@ -51,6 +56,12 @@ public class EventDetailsActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_event_details);
 
+        int iconResId = getIntent().getIntExtra("iconResId", R.drawable.ic_default);
+
+        // Устанавливаем иконку в ImageView
+        ImageView ivIconHeader = findViewById(R.id.ivEventIconHeader);
+        ivIconHeader.setImageResource(iconResId);
+
         // ✅ Берём реальные данные из LoginActivity
         currentUserId = LoginActivity.CURRENT_USER_ID;
         currentRole = LoginActivity.CURRENT_USER_ROLE;
@@ -87,22 +98,70 @@ public class EventDetailsActivity extends AppCompatActivity {
     }
 
     private void registerForEvent() {
-        tvResult.setText("Запись на мероприятие...");
+        // Показываем индикатор загрузки
+        AlertDialog loadingDialog = new AlertDialog.Builder(this)
+                .setMessage("Проверка допуска...")
+                .setCancelable(false)
+                .create();
+        loadingDialog.show();
+
         RetrofitClient.getService().register(currentUserId, eventId, unitId)
                 .enqueue(new Callback<ResponseBody>() {
                     @Override
                     public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                        loadingDialog.dismiss();
+
                         try {
-                            String msg = response.body() != null ? response.body().string()
-                                    : response.errorBody().string();
-                            tvResult.setText(response.isSuccessful() ? "УСПЕХ: " + msg : "ОТКАЗ: " + msg);
-                        } catch (IOException e) { tvResult.setText("Ошибка: " + e.getMessage()); }
+                            boolean isSuccess = response.isSuccessful();
+                            String msg = response.body() != null ?
+                                    response.body().string() :
+                                    response.errorBody().string();
+
+                            // Выбираем ресурс иконки
+                            int iconRes = isSuccess ? R.drawable.ic_check_circle : R.drawable.ic_cancel;
+                            // Выбираем цвет для тонирования иконки
+                            int iconTint = isSuccess ?
+                                    ContextCompat.getColor(EventDetailsActivity.this, R.color.green_success) :
+                                    ContextCompat.getColor(EventDetailsActivity.this, R.color.red_error);
+
+                            String titleText = isSuccess ? "Допуск разрешен" : "Допуск запрещен";
+
+                            // Создаем иконку с нужным цветом
+                            Drawable icon = ContextCompat.getDrawable(EventDetailsActivity.this, iconRes);
+                            if (icon != null) {
+                                icon = DrawableCompat.wrap(icon);
+                                DrawableCompat.setTint(icon.mutate(), iconTint);
+                            }
+
+                            // Формируем AlertDialog с цветной иконкой
+                            new AlertDialog.Builder(EventDetailsActivity.this)
+                                    .setIcon(icon) // Устанавливаем уже покрашенную иконку
+                                    .setTitle(titleText)
+                                    .setMessage(msg)
+                                    .setPositiveButton("Понятно", (d, w) -> d.dismiss())
+                                    .show();
+
+                        } catch (IOException e) {
+                            showErrorDialog("Ошибка обработки ответа: " + e.getMessage());
+                        }
                     }
+
                     @Override
                     public void onFailure(Call<ResponseBody> call, Throwable t) {
-                        tvResult.setText("Сеть: " + t.getMessage());
+                        loadingDialog.dismiss();
+                        showErrorDialog("Сетевая ошибка: " + t.getMessage());
                     }
                 });
+    }
+
+    // Вспомогательный метод для показа ошибки
+    private void showErrorDialog(String message) {
+        new AlertDialog.Builder(this)
+                .setIcon(R.drawable.ic_cancel)
+                .setTitle("Ошибка")
+                .setMessage(message)
+                .setPositiveButton("OK", (d, w) -> d.dismiss())
+                .show();
     }
 
     private void showAttendanceForm() {
@@ -124,7 +183,9 @@ public class EventDetailsActivity extends AppCompatActivity {
                             studentsList = response.body();
                             attendanceMap.clear();
                             lvStudents.setAdapter(new AttendanceAdapter());
-                            tvResult.setText("Отметьте присутствующих:");
+
+                            // ✅ ПОКАЗЫВАЕМ ПУСТОЙ СПИСОК ПРИ ОТКРЫТИИ ФОРМЫ
+                            updatePresentStudentsList();
                         } else {
                             tvResult.setText("Не удалось загрузить список");
                         }
@@ -275,6 +336,7 @@ public class EventDetailsActivity extends AppCompatActivity {
             if (convertView == null) {
                 convertView = getLayoutInflater().inflate(R.layout.item_attendance, parent, false);
             }
+
             Map<String, Object> s = studentsList.get(position);
             int id = ((Number) s.get("id")).intValue();
 
@@ -282,11 +344,46 @@ public class EventDetailsActivity extends AppCompatActivity {
             CheckBox cb = convertView.findViewById(R.id.cbPresent);
 
             tvName.setText(s.get("fullname").toString());
+
+            // Сбрасываем старый слушатель перед установкой состояния
             cb.setOnCheckedChangeListener(null);
-            cb.setChecked(attendanceMap.getOrDefault(id, false));
-            cb.setOnCheckedChangeListener((b, isChecked) -> attendanceMap.put(id, isChecked));
+            boolean isPresent = attendanceMap.getOrDefault(id, false);
+            cb.setChecked(isPresent);
+
+            // Устанавливаем новый слушатель
+            cb.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                attendanceMap.put(id, isChecked);
+                // ✅ ДИНАМИЧЕСКОЕ ОБНОВЛЕНИЕ СПИСКА В TVRESULT
+                updatePresentStudentsList();
+            });
 
             return convertView;
         }
+    }
+
+    // ✅ Вспомогательный метод для формирования списка присутствующих
+    private void updatePresentStudentsList() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("✅ ПРИСУТСТВУЮТ НА МЕРОПРИЯТИИ:\n");
+        sb.append("-----------------------------\n");
+
+        int count = 0;
+        for (Map<String, Object> student : studentsList) {
+            int id = ((Number) student.get("id")).intValue();
+            String fullname = student.get("fullname").toString();
+
+            if (attendanceMap.getOrDefault(id, false)) {
+                count++;
+                sb.append(count).append(". ").append(fullname).append("\n");
+            }
+        }
+
+        if (count == 0) {
+            sb.append("Пока никто не отмечен.");
+        } else {
+            sb.append("\nВсего отмечено: ").append(count).append(" чел.");
+        }
+
+        tvResult.setText(sb.toString());
     }
 }

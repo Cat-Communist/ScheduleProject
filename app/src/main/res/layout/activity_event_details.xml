@@ -11,6 +11,12 @@
         android:layout_height="wrap_content"
         android:text="&lt; Назад" />
 
+    <ImageView
+        android:id="@+id/ivEventIconHeader"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:contentDescription="Иконка мероприятия" />
+
     <TextView
         android:id="@+id/tvEventTitleHeader"
         android:layout_width="match_parent"
@@ -80,14 +86,6 @@
         android:text="Сохранить результат"
         android:visibility="gone"
         android:layout_marginTop="8dp" />
-
-    <!-- УДАЛИТЕ ЭТОТ БЛОК! Это был дубликат btnDoc -->
-    <!--
-    <Button
-        android:id="@+id/btnDoc"
-        ...
-    />
-    -->
 
     <ScrollView
         android:layout_width="match_parent"
